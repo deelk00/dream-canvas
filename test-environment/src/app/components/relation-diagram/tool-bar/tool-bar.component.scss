@@ -1,0 +1,50 @@
+:host {
+  flex-grow: 0;
+  padding: 10px;
+  border-right: 1px solid;
+  width: 37px;
+  background-color: white;
+  z-index: 1;
+}
+
+:host(.extended) {
+  animation: extension 0.5s;
+  animation-fill-mode: both;
+}
+:host(.reduced) {
+  animation: reduce 0.5s;
+  animation-fill-mode: both;
+}
+
+.arrow {
+  transition: transform 0.5s;
+}
+
+.arrow-right {
+  transform: rotate(90deg);
+}
+
+.arrow-left {
+  transform: rotate(-90deg);
+}
+
+@keyframes extension {
+  0% {
+    width: 37px;
+    margin-right: 0px;
+  }
+  100% {
+    width: 250px;
+    margin-right: calc(-250px + 37px);
+  }
+}
+@keyframes reduce {
+  0% {
+    width: 250px;
+    margin-right: calc(-250px + 37px);
+  }
+  100% {
+    width: 37px;
+    margin-right: 0px;
+  }
+}
