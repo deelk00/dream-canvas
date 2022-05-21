@@ -1,5 +1,6 @@
-import { Vector2D } from './vector-2d.class';
+import { Vector } from "./vector.class";
+
 export interface Dimensions2D {
-    startVector: Vector2D;
-    endVector: Vector2D;
+    startVector: Vector;
+    endVector: Vector;
 }

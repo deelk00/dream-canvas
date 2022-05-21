@@ -1,5 +1,5 @@
+import { IMouseEvent } from './model/events/mouse-event.interface';
 import { v4 as uuid } from 'uuid';
-import { Vector2D } from './model/math/vector-2d.class';
 import { CustomAttribute } from './model/enums/custom-attribute.enum';
 import { DreamObject } from './model/dream-object.class';
 import { IComponent } from './model/component.interface';
@@ -7,7 +7,8 @@ import { IEvent } from './model/events/event.interface';
 import { IRenderEvent } from './model/events/render-event.interface';
 import { IComposable } from './model/composable.interface';
 import { RootComponent } from './model/root-component.class';
-import { RootObject } from './model/elements/root-object.class';
+import { RootObject } from './model/dream-objects/root-object.class';
+import { Vector } from './model/math/vector.class';
 
 
 export interface IDreamCanvasOptions {
@@ -17,7 +18,7 @@ export interface IDreamCanvasOptions {
 export interface IDreamRenderingInformation {
     id: string;
     context: CanvasRenderingContext2D;
-    offset: Vector2D;
+    offset: Vector;
     options: IDreamCanvasOptions;
     resizeObserver: ResizeObserver;
     components: {[id: string]: RootComponent};
@@ -32,18 +33,44 @@ export class DreamCanvas {
 
     get objects() {return this.root.children};
 
-    private eventHandlers: { 
-        event: keyof HTMLElementEventMap, 
-        handlers: ((...args: any) => void)[] 
-    }[] = [
-        {
-            event: "contextmenu",
-            handlers: []
-        }
-    ]
+    private mouseEvents: [keyof HTMLElementEventMap, keyof RootObject][];
 
     constructor() {
         this.render();
+        this.mouseEvents = [
+            ["mousedown", "mouseDown"],
+            ["mouseup", "mouseUp"],
+            ["mouseenter", "mouseEnter"],
+            ["mousemove", "mouseMove"],
+            ["contextmenu", "contextMenu"],
+            ["mouseleave", "mouseLeave"]
+        ]
+    }
+
+    getMouseEventArgs = (e: MouseEvent): IMouseEvent | undefined => {
+        const canvasId = (e.target as HTMLCanvasElement).getAttribute(CustomAttribute.Id);
+        if(!canvasId) return;
+        const info = this.getCanvasInformation(canvasId);
+
+        return {
+            originalEvent: e,
+            dreamCanvas: this,
+            cancelled: false,
+            mousePositions: {
+                canvas: new Vector({x: e.offsetX, y: e.offsetY}),
+                worksheet: new Vector({
+                    x: e.offsetX + info.offset.x,
+                    y: e.offsetY + info.offset.y
+                })
+            }
+        };
+    }
+
+    mouseHandler = (e: MouseEvent, eventHandler: keyof RootObject) => {
+        const args = this.getMouseEventArgs(e);
+        if(!args) return;
+
+        (this.root[eventHandler] as any)(args);
     }
 
     public destroy = () => {
@@ -59,7 +86,7 @@ export class DreamCanvas {
         const info: IDreamRenderingInformation = {
             id: uuid(),
             context: canvas.getContext("2d")!,
-            offset: new Vector2D(),
+            offset: new Vector({x: 0, y: 0}),
             options,
             // indirect call to allow overriding the resize handler
             resizeObserver: new ResizeObserver((entries: ResizeObserverEntry[]) => this.resizeHandler(entries)),
@@ -70,12 +97,8 @@ export class DreamCanvas {
 
         this._renderingContexts[info.id] = info;
 
-        for (const eventHandler of this.eventHandlers) {
-            info.context.canvas.addEventListener(eventHandler.event, (ev: Event) => {
-                for (const func of eventHandler.handlers) {
-                    func(ev);
-                }
-            });
+        for (const event of this.mouseEvents) {
+            info.context.canvas.addEventListener(event[0], (e: any) => this.mouseHandler(e, event[1]));
         }
 
         return info;
@@ -106,7 +129,7 @@ export class DreamCanvas {
         }
     }
 
-    public addObject = <T extends DreamObject>(t: (new () => T) | DreamObject): DreamObject => {
+    public addObject = <T extends DreamObject>(t: (new (parent: DreamObject) => T) | DreamObject): DreamObject => {
         return this.root.addChildren(t);
     }
 
@@ -142,6 +165,7 @@ export class DreamCanvas {
         this._lastTimeStamp = now;
 
         const elements = Object.values(this.root.children);
+        
         const args: IRenderEvent = {
             delta,
             dreamCanvas: this,
@@ -152,11 +176,12 @@ export class DreamCanvas {
         for (const info of Object.values(this._renderingContexts)) {
             const visibleElements = elements.filter(e => {
                 const dims = e.getDimensions();
+                
                 return e.position.x + dims.startVector.x > info.offset.x;
             });
-            
+
             for (const element of visibleElements) {
-                element.render(info, new Vector2D());
+                element.render(info, new Vector(), new Vector({x: 1, y: 1, z: 1}));
             }
         }
 

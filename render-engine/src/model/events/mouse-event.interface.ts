@@ -1,9 +1,9 @@
 import { IEvent } from "./event.interface";
-import { Vector2D } from '../math/vector-2d.class';
+import { Vector } from "../math/vector.class";
 
 export interface IMouseEvent extends IEvent {
     mousePositions: {
-        canvas: Vector2D,
-        worksheet: Vector2D
+        canvas: Vector,
+        worksheet: Vector
     }
 }

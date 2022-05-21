@@ -1,15 +1,22 @@
+import { IComponent } from './component.interface';
 import { IDreamRenderingInformation } from '../index';
 import { v4 as uuid } from 'uuid';
 import { Component } from './component.class';
 import { IComposable } from './composable.interface';
 import { Dimensions2D } from './math/dimensions-2d.class';
-import { Vector2D } from './math/vector-2d.class';
+import { Vector } from './math/vector.class';
+import { ILifeCycleEvent } from './events/start-event.interface';
+import { IRenderEvent } from './events/render-event.interface';
+import { IMouseEvent } from './events/mouse-event.interface';
+import { IKeyboardEvent } from './events/keyboard-event.interface';
+import { IContextMenuEvent } from './events/context-menu-event.interface';
 
-export abstract class DreamObject implements IComposable<Component> {
+export abstract class DreamObject implements IComponent, IComposable<Component> {
     private _id: string = uuid();
     get id() {return this._id;};
 
-    position: Vector2D = new Vector2D();
+    position: Vector = new Vector();
+    scale: Vector = new Vector({x: 1, y: 1, z: 1});
     zIndex: number = 0;
 
     private _children: {[id: string]: DreamObject} = {};
@@ -21,10 +28,10 @@ export abstract class DreamObject implements IComposable<Component> {
 
     }
 
-    public addChildren = <T extends DreamObject>(t: (new () => T) | DreamObject): DreamObject => {
+    public addChildren = <T extends DreamObject>(t: (new (parent: DreamObject) => T) | DreamObject): DreamObject => {
         let e: DreamObject;
         if(typeof(t) === "function") {
-            e = new t();
+            e = new t(this);
         }else{
             e = t;
         }
@@ -55,15 +62,24 @@ export abstract class DreamObject implements IComposable<Component> {
         for (const component of Object.values(this._components)) {
             const dims = component.getDimensions();
 
-            startX = Math.min(dims.startVector.x, startX);
-            startY = Math.min(dims.startVector.y, startY);
-            endX = Math.max(dims.endVector.x, endX);
-            endY = Math.max(dims.endVector.y, endY);
+            startX = Math.min(dims.startVector.x * this.scale.x + component.position.x, startX);
+            startY = Math.min(dims.startVector.y * this.scale.y + component.position.y, startY);
+            endX = Math.max(dims.endVector.x * this.scale.x + component.position.x, endX);
+            endY = Math.max(dims.endVector.y * this.scale.y + component.position.y, endY);
+        }
+
+        for (const obj of Object.values(this._children)) {
+            const dims = obj.getDimensions();
+
+            startX = Math.min(obj.position.x + dims.startVector.x * this.scale.x, startX);
+            startY = Math.min(obj.position.y + dims.startVector.y * this.scale.y, startY);
+            endX = Math.max(obj.position.x + dims.endVector.x * this.scale.x, endX);
+            endY = Math.max(obj.position.y + dims.endVector.y * this.scale.y, endY);
         }
 
         return {
-            startVector: new Vector2D({x: startX, y: startY}),
-            endVector: new Vector2D({x: endX, y: endY})
+            startVector: new Vector([startX, startY]),
+            endVector: new Vector([endX, endY])
         };
     }
 
@@ -88,9 +104,59 @@ export abstract class DreamObject implements IComposable<Component> {
         return comp;
     };
 
-    render = (info: IDreamRenderingInformation, offset: Vector2D) => {
-        for (const component of Object.values(this.components).filter(c => c.vertices && (c.strokeColor || c.fillColor))) {
-            component.render(info, offset);
+    render = (info: IDreamRenderingInformation, offset: Vector, scale: Vector) => {
+        offset = offset.add(this.position);        
+        scale = scale.multiply(this.scale);
+        
+        for (const component of Object.values(this.components).filter(c => c.mesh && (c.strokeColor || c.fillColor))) {
+            component.render(info, offset,scale);
+            
+        }
+        
+        for (const obj of Object.values(this.children)) {
+            obj.render(info, offset, scale);
         }
     }
+    
+    start?: (e: ILifeCycleEvent) => void;
+
+    afterRender?: (e: IRenderEvent) => void;
+    beforeRender?: (e: IRenderEvent) => void;
+    
+    mouseDown = (e: IMouseEvent) => {
+        const elementDims = this.getDimensions();
+        const worksheetPos = e.mousePositions.worksheet;
+        console.log(elementDims);
+        console.log(this.position.x);
+        
+        if(this.position.x + elementDims.startVector.x < worksheetPos.x
+            
+        ) {
+            console.log("awd");
+            
+        } 
+    };
+    mouseUp? = (e: IMouseEvent) => {
+
+    };
+
+    keyDown?: (e: IKeyboardEvent) => void;
+    keyUp?: (e: IKeyboardEvent) => void;
+
+    mouseMove? = (e: IMouseEvent) => {
+
+    };
+    mouseLeave? = (e: IMouseEvent) => {
+
+    };
+    mouseEnter? = (e: IMouseEvent) => {
+
+    };
+
+    contextMenu? = (e: IContextMenuEvent) => {
+
+    };
+    end? = (e: ILifeCycleEvent) => {
+
+    };
 }
