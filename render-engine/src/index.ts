@@ -1,10 +1,13 @@
 import { v4 as uuid } from 'uuid';
 import { Vector2D } from './model/math/vector-2d.class';
 import { CustomAttribute } from './model/enums/custom-attribute.enum';
-import { DreamElement } from './model/dream-element.class';
+import { DreamObject } from './model/dream-object.class';
 import { IComponent } from './model/component.interface';
-import { IEvent } from 'model/events/event.interface';
-import { IRenderEvent } from 'model/events/render-event.interface';
+import { IEvent } from './model/events/event.interface';
+import { IRenderEvent } from './model/events/render-event.interface';
+import { IComposable } from './model/composable.interface';
+import { RootComponent } from './model/root-component.class';
+import { RootObject } from './model/elements/root-object.class';
 
 
 export interface IDreamCanvasOptions {
@@ -17,6 +20,7 @@ export interface IDreamRenderingInformation {
     offset: Vector2D;
     options: IDreamCanvasOptions;
     resizeObserver: ResizeObserver;
+    components: {[id: string]: RootComponent};
 }
 
 export class DreamCanvas {
@@ -24,9 +28,9 @@ export class DreamCanvas {
     private _lastTimeStamp: number = Date.now();
     private _isAlive: boolean = true;
 
-    private _elements: { [id: string]: DreamElement } = {};
+    root: DreamObject = new RootObject();
 
-    get elements() {return Object.assign(this._elements)};
+    get objects() {return this.root.children};
 
     private eventHandlers: { 
         event: keyof HTMLElementEventMap, 
@@ -58,7 +62,8 @@ export class DreamCanvas {
             offset: new Vector2D(),
             options,
             // indirect call to allow overriding the resize handler
-            resizeObserver: new ResizeObserver((entries: ResizeObserverEntry[]) => this.resizeHandler(entries))
+            resizeObserver: new ResizeObserver((entries: ResizeObserverEntry[]) => this.resizeHandler(entries)),
+            components: {}
         }
         canvas.setAttribute(CustomAttribute.Id, info.id);
         info.resizeObserver.observe(canvas);
@@ -101,33 +106,22 @@ export class DreamCanvas {
         }
     }
 
-    public addElement = <T extends DreamElement>(t: (new () => T) | DreamElement): DreamElement => {
-        let e: DreamElement;
-        if(typeof(t) === "function") {
-            e = new t();
-        }else{
-            e = t;
-        }
-
-        this._elements[e.id] = e;
-
-        return e;
+    public addObject = <T extends DreamObject>(t: (new () => T) | DreamObject): DreamObject => {
+        return this.root.addChildren(t);
     }
 
-    public getElement = (id: string): DreamElement => {
-        return this._elements[id];
+    public getObject = (id: string): DreamObject => {
+        return this.root.getChildren(id);
     }
 
-    public removeElement = (id: string): DreamElement => {
-        const e = this._elements[id];
-        if(e){
-            delete this._elements[id];
-        }
-        return e;
+    public removeObject = (id: string): DreamObject => {
+        return this.root.removeChildren(id);
     }
 
-    private _fireEvent = (eventName: keyof IComponent, args: IEvent, elements?: DreamElement[]) => { 
-        elements ??= Object.values(this._elements);
+
+    // TODO: recursivly go through every children of the element and fire the event
+    private _fireEvent = (eventName: keyof IComponent, args: IEvent, elements?: DreamObject[]) => { 
+        elements ??= Object.values(this.root.children);
 
         for (const element of elements) {
             args.cancelled = false;
@@ -140,13 +134,14 @@ export class DreamCanvas {
     }
 
     public render = () => {
+
         if(!this._isAlive)
             return;
         const now = Date.now();
         const delta = now - this._lastTimeStamp;
         this._lastTimeStamp = now;
 
-        const elements = Object.values(this._elements);
+        const elements = Object.values(this.root.children);
         const args: IRenderEvent = {
             delta,
             dreamCanvas: this,
@@ -158,28 +153,10 @@ export class DreamCanvas {
             const visibleElements = elements.filter(e => {
                 const dims = e.getDimensions();
                 return e.position.x + dims.startVector.x > info.offset.x;
-                    
             });
             
             for (const element of visibleElements) {
-                for (const component of Object.values(element.components).filter(c => c.vertices && (c.strokeColor || c.fillColor))) {
-                    info.context.beginPath();
-                    info.context.strokeStyle = component.strokeColor ?? "#00000000";
-                    info.context.fillStyle = component.fillColor ?? "#00000000";
-                    info.context.lineWidth = component.strokeThickness;
-
-                    if(component.vertices && component.vertices.length > 1) {
-                        const startPos = component.vertices![0];
-                        info.context.moveTo(startPos.x, startPos.y)
-                        for (const vertex of component.vertices!) {
-                            info.context.lineTo(vertex.x, vertex.y);
-                        }
-                    }
-                    
-                    info.context.closePath();
-                    if(component.strokeColor) info.context.stroke();
-                    if(component.fillColor) info.context.fill();
-                }
+                element.render(info, new Vector2D());
             }
         }
 

@@ -1,5 +1,5 @@
 import { Component } from '../component.class';
-import { DreamElement } from '../dream-element.class';
+import { DreamObject } from '../dream-object.class';
 import { Vector2D } from '../math/vector-2d.class';
 
 export class MeshRenderer extends Component {
@@ -10,7 +10,7 @@ export class MeshRenderer extends Component {
         new Vector2D({x: 0, y: 50})
     ];
 
-    constructor(attachedElement: DreamElement) {
+    constructor(attachedElement: DreamObject) {
         super(attachedElement);
     }
 }

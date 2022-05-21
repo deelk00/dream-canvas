@@ -7,10 +7,11 @@ import { ILifeCycleEvent } from "./events/start-event.interface";
 import { Dimensions2D } from "./math/dimensions-2d.class";
 import { Vector2D } from "./math/vector-2d.class";
 import { RenderType } from './enums/render-type.enum';
-import { DreamElement } from "./dream-element.class";
+import { DreamObject } from "./dream-object.class";
+import { IDreamRenderingInformation } from "../index";
 
 export abstract class Component implements IComponent {
-    attachedElement: DreamElement;
+    attachedElement: DreamObject;
     vertices?: Vector2D[] = [];
     scale: Vector2D = new Vector2D({x: 1, y: 1});
     renderType: RenderType = RenderType.Mesh;
@@ -49,7 +50,7 @@ export abstract class Component implements IComponent {
         };
     }
     
-    constructor(attachedElement: DreamElement) {
+    constructor(attachedElement: DreamObject) {
         this.attachedElement = attachedElement;
     }
     
@@ -70,4 +71,23 @@ export abstract class Component implements IComponent {
 
     contextMenu?: (e: IContextMenuEvent) => void;
     end?: (e: ILifeCycleEvent) => void;
+
+    render = (info: IDreamRenderingInformation, offset: Vector2D) => {
+        info.context.beginPath();
+        info.context.strokeStyle = this.strokeColor ?? "#00000000";
+        info.context.fillStyle = this.fillColor ?? "#00000000";
+        info.context.lineWidth = this.strokeThickness;
+
+        if(this.vertices && this.vertices.length > 1) {
+            const startPos = this.vertices![0];
+            info.context.moveTo(startPos.x, startPos.y)
+            for (const vertex of this.vertices!) {
+                info.context.lineTo(vertex.x, vertex.y);
+            }
+        }
+        
+        info.context.closePath();
+        if(this.strokeColor) info.context.stroke();
+        if(this.fillColor) info.context.fill();
+    }
 }

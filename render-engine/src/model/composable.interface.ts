@@ -1,9 +1,10 @@
 import { Component } from "./component.class";
+import { IComponent } from "./component.interface";
 
-export interface IComposable {
-    components: { [id: string]: Component };
+export interface IComposable<T extends IComponent> {
+    components: { [id: string]: T };
 
-    getComponent: <T extends Component>(t: new () => T) => T;
-    addComponent: <T extends Component>(t: new () => T) => T;
-    removeComponent: <T extends Component>(t: new () => T) => T;
+    getComponent: <TS extends T>(t: new () => TS) => TS
+    addComponent: <TS extends T>(t: new () => TS) => TS;
+    removeComponent: <TS extends T>(t: new () => TS) => TS;
 }
