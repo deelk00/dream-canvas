@@ -1,6 +1,7 @@
-import { DreamCanvas, IDreamRenderingInformation } from '../../index';
+import { DreamCanvas, DreamRenderingInformation } from '../../index';
 export interface IEvent {
     dreamCanvas: DreamCanvas;
     originalEvent?: Event;
-    cancelled: boolean;
+    cancelled?: boolean;
+    canvasInfo: DreamRenderingInformation
 }

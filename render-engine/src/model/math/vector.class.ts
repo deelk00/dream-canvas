@@ -50,11 +50,11 @@ class Vector implements IVector {
     dimValues: number[] = [0];
     precision: number = 16;
 
-    get x() {return this.dimValues[0];};
+    get x() {return this.getDimValue(0);};
     set x(value: number) {this.dimValues[0] = value};
-    get y() {return this.dimValues[1];};
+    get y() {return this.getDimValue(1);};
     set y(value: number) {this.dimValues[1] = value};
-    get z() {return this.dimValues[2];};
+    get z() {return this.getDimValue(2);};
     set z(value: number) {this.dimValues[2] = value};
 
     /** 
@@ -81,7 +81,7 @@ class Vector implements IVector {
         dimValues: number[] | {x: number, y?: number, z?: number} = [0, 0, 0]
     ) {
         if(Array.isArray(dimValues)){
-            this.dimValues = dimValues;
+            this.dimValues = [...dimValues];
         }else{
             this.dimValues = [dimValues.x, dimValues.y ?? 0, dimValues.z ?? 0];
         }
@@ -94,24 +94,22 @@ class Vector implements IVector {
     is = (pos: RelativePosition, vector: Vector): boolean => {
         let res = true;
         if(res && (pos & RelativePosition.Above) === RelativePosition.Above) {
-            res = this.y > vector.y;
+            res = this.y <= vector.y;
         }else if(res && (pos & RelativePosition.Below) === RelativePosition.Below) {
-            res = this.y < vector.y;
+            res = this.y >= vector.y;
         }
 
         if(res && (pos & RelativePosition.RightFrom) === RelativePosition.RightFrom) {
-            res = this.x > vector.x;
+            res = this.x >= vector.x;
         }else if(res && (pos & RelativePosition.LeftFrom) === RelativePosition.LeftFrom) {
-            res = this.x < vector.x;
+            res = this.x <= vector.x;
         }
 
         return res;
     }
 
-    calc(v: IVector, operator: Operator, t?: new (dimValues: number[]) => Vector): Vector{
-        const tt = t ? t : Vector;
-
-        const res = v.dimensions < this.dimensions ? new tt(this.dimValues) : new tt(v.dimValues);
+    calc(v: IVector, operator: Operator): Vector{
+        const res = new Vector(this.dimValues);
 
         for (let i = 0; i < this.dimValues.length && i < v.dimValues.length; i++) {
             switch (operator) {
@@ -134,13 +132,13 @@ class Vector implements IVector {
         return res;
     } 
 
-    add = (v: IVector, t: (new (dimValues: number[]) => Vector) | undefined = undefined) => this.calc(v, Operator.Add, t);
+    add = (v: IVector) => this.calc(v, Operator.Add);
 
-    subtract = (v: IVector, t: (new (dimValues: number[]) => Vector) | undefined = undefined) => this.calc(v, Operator.Subtract, t);
+    subtract = (v: IVector) => this.calc(v, Operator.Subtract);
 
-    multiply = (v: IVector, t: (new (dimValues: number[]) => Vector) | undefined = undefined) => this.calc(v, Operator.Multiply, t);
+    multiply = (v: IVector) => this.calc(v, Operator.Multiply);
 
-    divide = (v: IVector, t: (new (dimValues: number[]) => Vector) | undefined = undefined) => this.calc(v, Operator.Divide, t);
+    divide = (v: IVector) => this.calc(v, Operator.Divide);
 
     normalize = (t: (new (dimValues?: number[]) => Vector) | undefined = undefined): Vector => {
         const res = t? new t() : new Vector();

@@ -2,7 +2,7 @@ import { IEvent } from "./event.interface";
 import { Vector } from "../math/vector.class";
 
 export interface IMouseEvent extends IEvent {
-    mousePositions: {
+    currentMousePositions: {
         canvas: Vector,
         worksheet: Vector
     }

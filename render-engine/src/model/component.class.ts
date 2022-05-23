@@ -7,7 +7,7 @@ import { ILifeCycleEvent } from "./events/start-event.interface";
 import { Dimensions2D } from "./math/dimensions-2d.class";
 import { RenderType } from './enums/render-type.enum';
 import { DreamObject } from "./dream-object.class";
-import { IDreamRenderingInformation } from "../index";
+import { DreamRenderingInformation } from "../index";
 import { Vector } from "./math/vector.class";
 import { Mesh } from "./mesh.interface";
 
@@ -57,25 +57,25 @@ export abstract class Component implements IComponent {
         this.scale = new Vector({x: 1, y: 1, z: 1});
     }
     
-    start?: (e: ILifeCycleEvent) => void;
+    start?: (e: ILifeCycleEvent) => boolean | void;
 
-    afterRender?: (e: IRenderEvent) => void;
-    beforeRender?: (e: IRenderEvent) => void;
+    afterRender?: (e: IRenderEvent) => boolean | void;
+    beforeRender?: (e: IRenderEvent) => boolean | void;
     
-    mouseDown?: (e: IMouseEvent) => void;
-    mouseUp?: (e: IMouseEvent) => void;
+    mouseDown?: (e: IMouseEvent) => boolean | void;
+    mouseUp?: (e: IMouseEvent) => boolean | void;
 
-    keyDown?: (e: IKeyboardEvent) => void;
-    keyUp?: (e: IKeyboardEvent) => void;
+    keyDown?: (e: IKeyboardEvent) => boolean | void;
+    keyUp?: (e: IKeyboardEvent) => boolean | void;
 
-    mouseMove?: (e: IMouseEvent) => void;
-    mouseLeave?: (e: IMouseEvent) => void;
-    mouseEnter?: (e: IMouseEvent) => void;
+    mouseMove?: (e: IMouseEvent) => boolean | void;
+    mouseLeave?: (e: IMouseEvent) => boolean | void;
+    mouseEnter?: (e: IMouseEvent) => boolean | void;
 
-    contextMenu?: (e: IContextMenuEvent) => void;
-    end?: (e: ILifeCycleEvent) => void;
+    contextMenu?: (e: IContextMenuEvent) => boolean | void;
+    end?: (e: ILifeCycleEvent) => boolean | void;
 
-    render = (info: IDreamRenderingInformation, offset: Vector, scale: Vector) => {
+    render = (info: DreamRenderingInformation, offset: Vector, scale: Vector) => {
         const calcVertexPosition = (vertex: Vector): Vector => {  
             return new Vector ({
                 x: (offset.x + info.offset.x + this.position.x) + ( vertex.x * this.scale.x * scale.x),

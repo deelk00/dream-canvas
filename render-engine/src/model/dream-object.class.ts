@@ -1,5 +1,5 @@
 import { IComponent } from './component.interface';
-import { IDreamRenderingInformation } from '../index';
+import { DreamRenderingInformation } from '../index';
 import { v4 as uuid } from 'uuid';
 import { Component } from './component.class';
 import { IComposable } from './composable.interface';
@@ -10,8 +10,10 @@ import { IRenderEvent } from './events/render-event.interface';
 import { IMouseEvent } from './events/mouse-event.interface';
 import { IKeyboardEvent } from './events/keyboard-event.interface';
 import { IContextMenuEvent } from './events/context-menu-event.interface';
+import { RelativePosition } from './enums/relative-position.enum';
+import { IEvent } from './events/event.interface';
 
-export abstract class DreamObject implements IComponent, IComposable<Component> {
+export abstract class DreamObject implements IComposable<Component> {
     private _id: string = uuid();
     get id() {return this._id;};
 
@@ -26,6 +28,10 @@ export abstract class DreamObject implements IComponent, IComposable<Component> 
         public parent: DreamObject
     ) {
 
+    }
+
+    public getWorksheetPosition = (): Vector => {
+        return this.parent ? this.position.add(this.parent.getWorksheetPosition()) : this.position;
     }
 
     public addChildren = <T extends DreamObject>(t: (new (parent: DreamObject) => T) | DreamObject): DreamObject => {
@@ -104,7 +110,7 @@ export abstract class DreamObject implements IComponent, IComposable<Component> 
         return comp;
     };
 
-    render = (info: IDreamRenderingInformation, offset: Vector, scale: Vector) => {
+    render = (info: DreamRenderingInformation, offset: Vector, scale: Vector) => {
         offset = offset.add(this.position);        
         scale = scale.multiply(this.scale);
         
@@ -117,45 +123,73 @@ export abstract class DreamObject implements IComponent, IComposable<Component> 
             obj.render(info, offset, scale);
         }
     }
-    
-    start?: (e: ILifeCycleEvent) => void;
 
-    afterRender?: (e: IRenderEvent) => void;
-    beforeRender?: (e: IRenderEvent) => void;
-    
-    mouseDown = (e: IMouseEvent) => {
+    public eventChain(event: keyof IComponent, args: IEvent) {
+        if(!args.cancelled) return;
+
+        this.fireEventOnComponents(event, args);
+
+        for (const child of Object.values(this._children)) {
+            child.eventChain(event, args);
+            if(args.cancelled) break;
+        }
+    }
+
+    public mouseMoveEventChain = (e: IMouseEvent) => {
         const elementDims = this.getDimensions();
-        const worksheetPos = e.mousePositions.worksheet;
-        console.log(elementDims);
-        console.log(this.position.x);
-        
-        if(this.position.x + elementDims.startVector.x < worksheetPos.x
+        const objWorksheetPos = this.getWorksheetPosition();
+        if(e.canvasInfo.mousePositions.length < 2) return;
+
+        if(e.currentMousePositions.worksheet.is(RelativePosition.BelowAndRightFrom, objWorksheetPos.add(elementDims.startVector))
+            && e.currentMousePositions.worksheet.is(RelativePosition.AboveAndLeftFrom, objWorksheetPos.add(elementDims.endVector))
         ) {
-            console.log("awd");
-            
+            if(!e.canvasInfo.mousePositions[1].is(RelativePosition.BelowAndRightFrom, objWorksheetPos.add(elementDims.startVector))
+                || !e.canvasInfo.mousePositions[1].is(RelativePosition.AboveAndLeftFrom, objWorksheetPos.add(elementDims.endVector))
+            ) {
+                this.fireEventOnComponents("mouseEnter", e);
+            }
+
+
+            this.fireEventOnComponents("mouseMove", e);
+            if(!e.cancelled) {
+                e.cancelled = undefined;
+                for (const child of Object.values(this._children)) {
+                    child.mouseMoveEventChain(e);
+                    if(e.cancelled) break;
+                }
+            }
+        }else {
+            if(e.canvasInfo.mousePositions[1].is(RelativePosition.BelowAndRightFrom, objWorksheetPos.add(elementDims.startVector))
+                && e.canvasInfo.mousePositions[1].is(RelativePosition.AboveAndLeftFrom, objWorksheetPos.add(elementDims.endVector))
+            ) {
+                this.fireEventOnComponents("mouseLeave", e);
+            }
+        }
+    }
+
+    public mousePositionalEventChain = (event: keyof IComponent, e: IMouseEvent) => {
+        const elementDims = this.getDimensions();
+        const objWorksheetPos = this.getWorksheetPosition();
+
+        if(e.currentMousePositions.worksheet.is(RelativePosition.BelowAndRightFrom, objWorksheetPos.add(elementDims.startVector))
+            && e.currentMousePositions.worksheet.is(RelativePosition.AboveAndLeftFrom, objWorksheetPos.add(elementDims.endVector))
+        ) {
+            this.fireEventOnComponents(event, e);
+            if(!e.cancelled) {
+                e.cancelled = undefined;
+                for (const child of Object.values(this._children)) {
+                    child.mousePositionalEventChain(event, e);
+                    if(e.cancelled) break;
+                }
+            }
         } 
-    };
-    mouseUp? = (e: IMouseEvent) => {
+    }
 
-    };
-
-    keyDown?: (e: IKeyboardEvent) => void;
-    keyUp?: (e: IKeyboardEvent) => void;
-
-    mouseMove? = (e: IMouseEvent) => {
-
-    };
-    mouseLeave? = (e: IMouseEvent) => {
-
-    };
-    mouseEnter? = (e: IMouseEvent) => {
-
-    };
-
-    contextMenu? = (e: IContextMenuEvent) => {
-
-    };
-    end? = (e: ILifeCycleEvent) => {
-
-    };
+    private fireEventOnComponents = (event: keyof IComponent, e: IEvent) => {
+        for (const component of Object.values(this._components).filter(c => c[event])) {
+            if(component[event]!(e as any)) {
+                break;
+            }
+        }
+    }
 }
