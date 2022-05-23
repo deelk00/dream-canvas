@@ -130,7 +130,6 @@ export abstract class DreamObject implements IComponent, IComposable<Component> 
         console.log(this.position.x);
         
         if(this.position.x + elementDims.startVector.x < worksheetPos.x
-            
         ) {
             console.log("awd");
             

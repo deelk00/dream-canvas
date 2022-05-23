@@ -1,3 +1,4 @@
+import { RelativePosition } from './../enums/relative-position.enum';
 import { round } from './round.func';
 import { Operator } from './operator.enum';
 
@@ -39,6 +40,8 @@ interface IVector {
     normalize(): IVector;
 
     getLength(): number;
+
+    is: (pos: RelativePosition, v: Vector) => boolean
 
     clone(): IVector;
 };
@@ -86,6 +89,23 @@ class Vector implements IVector {
 
     get isNormalized(): boolean {
         return this.getLength() === 1;
+    }
+
+    is = (pos: RelativePosition, vector: Vector): boolean => {
+        let res = true;
+        if(res && (pos & RelativePosition.Above) === RelativePosition.Above) {
+            res = this.y > vector.y;
+        }else if(res && (pos & RelativePosition.Below) === RelativePosition.Below) {
+            res = this.y < vector.y;
+        }
+
+        if(res && (pos & RelativePosition.RightFrom) === RelativePosition.RightFrom) {
+            res = this.x > vector.x;
+        }else if(res && (pos & RelativePosition.LeftFrom) === RelativePosition.LeftFrom) {
+            res = this.x < vector.x;
+        }
+
+        return res;
     }
 
     calc(v: IVector, operator: Operator, t?: new (dimValues: number[]) => Vector): Vector{

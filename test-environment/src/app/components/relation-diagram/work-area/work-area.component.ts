@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { DreamCanvas } from "../../../../../../render-engine/t_dist";
-import { TestElement } from "../../../../../../render-engine/t_dist/model/elements/test-element.class";
+import { TestObject } from "../../../../../../render-engine/t_dist/model/dream-objects/test-object.class";
 
 
 @Component({
@@ -27,7 +27,7 @@ export class WorkAreaComponent implements OnInit, AfterViewInit {
     this.dreamCanvas = new DreamCanvas();
     this.dreamCanvas.addCanvas(this.canvas.nativeElement);
 
-    this.dreamCanvas.addElement(TestElement);
+    this.dreamCanvas.addObject(TestObject);
   }
 
   ngOnInit(): void {
